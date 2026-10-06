@@ -1,14 +1,17 @@
-import { createBrowserRouter } from 'react-router-dom'
+import { createBrowserRouter, Navigate } from 'react-router-dom'
 import { AppLayout } from './components/AppLayout'
 import { GuestRoute, ProtectedRoute } from './components/ProtectedRoute'
 import { LoginPage } from './pages/LoginPage'
 import { SignupPage } from './pages/SignupPage'
 import { ForgotPasswordPage } from './pages/ForgotPasswordPage'
 import { ResetPasswordPage } from './pages/ResetPasswordPage'
+import { LeasesPage } from './pages/LeasesPage'
+import { LeaseDetailPage } from './pages/LeaseDetailPage'
 import { DashboardPage } from './pages/DashboardPage'
+import { ReportsPage } from './pages/ReportsPage'
 import { NotFoundPage } from './pages/NotFoundPage'
 
-// Add new pages here. Anything under ProtectedRoute requires a session.
+// Add new pages here (and to NAV_ITEMS in AppLayout). Anything under ProtectedRoute requires a session.
 export const router = createBrowserRouter([
   {
     element: <GuestRoute />,
@@ -25,7 +28,13 @@ export const router = createBrowserRouter([
     children: [
       {
         element: <AppLayout />,
-        children: [{ path: '/', element: <DashboardPage /> }],
+        children: [
+          { path: '/', element: <Navigate to="/leases" replace /> },
+          { path: '/leases', element: <LeasesPage /> },
+          { path: '/leases/:id', element: <LeaseDetailPage /> },
+          { path: '/dashboard', element: <DashboardPage /> },
+          { path: '/reports', element: <ReportsPage /> },
+        ],
       },
     ],
   },
