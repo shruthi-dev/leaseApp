@@ -13,6 +13,21 @@ const STALE_AFTER_MS = 5 * 60 * 1000
 
 export type DocStatus = 'uploading' | 'extracting' | 'extracted' | 'analyzing' | 'completed' | 'failed'
 
+/** digital = selectable text on (nearly) every page; scanned = none; mixed = some pages without text. */
+export type PdfType = 'digital' | 'scanned' | 'mixed'
+
+/** A page counts as having text at this many non-blank characters (page numbers alone do not). */
+const MIN_PAGE_TEXT = 30
+/** Share of pages with text needed to call a document digital (allows blank or signature pages). */
+const DIGITAL_SHARE = 0.9
+
+export function classifyPdf(pages: { text: string }[]): { pdf_type: PdfType; text_pages: number } {
+  const text_pages = pages.filter((p) => p.text.trim().length >= MIN_PAGE_TEXT).length
+  const pdf_type: PdfType =
+    text_pages === 0 ? 'scanned' : text_pages >= Math.ceil(pages.length * DIGITAL_SHARE) ? 'digital' : 'mixed'
+  return { pdf_type, text_pages }
+}
+
 /** The processing fields every document row has. */
 export interface ProcessedDoc {
   id: string
@@ -25,6 +40,12 @@ export interface ProcessedDoc {
   error_code: string | null
   /** Technical detail, in English. */
   error_message: string | null
+  pdf_type: PdfType | null
+  text_pages: number | null
+  /** Milliseconds spent on each processing step (null when not recorded). */
+  upload_ms: number | null
+  extraction_ms: number | null
+  analysis_ms: number | null
 }
 
 /** Progress reported while a document is being processed in this browser tab. */
@@ -99,12 +120,13 @@ export async function processNewDocument(
   const id: string = row.id
   try {
     onProgress(id, { step: 'uploading' })
+    const uploadStarted = performance.now()
     const path = pathFor(row)
     const { error: uploadError } = await supabase.storage
       .from(LEASE_BUCKET)
       .upload(path, file, { contentType: 'application/pdf', upsert: true })
     if (uploadError) throw uploadError
-    await updateRow(kind, id, { file_path: path, status: 'extracting' })
+    await updateRow(kind, id, { file_path: path, status: 'extracting', upload_ms: elapsed(uploadStarted) })
 
     await extractAndSave(kind, id, await file.arrayBuffer(), onProgress)
     onProgress(id, { step: 'analyzing' })
@@ -137,8 +159,8 @@ export async function retryDocument(kind: DocKind, doc: ProcessedDoc, onProgress
 }
 
 /** Calls the analyze-lease Edge Function, which saves the results itself. */
-export async function analyzeDocument(kind: DocKind, id: string): Promise<void> {
-  const { error } = await supabase.functions.invoke('analyze-lease', { body: KINDS[kind].body(id) })
+export async function analyzeDocument(kind: DocKind, id: string, extra: Record<string, unknown> = {}): Promise<void> {
+  const { error } = await supabase.functions.invoke('analyze-lease', { body: { ...KINDS[kind].body(id), ...extra } })
   if (!error) return
   // Surface the function's own error message rather than a generic "non-2xx status".
   if (error instanceof FunctionsHttpError) {
@@ -155,13 +177,25 @@ export async function getFileUrl(path: string, expiresInSeconds = 3600): Promise
   return data.signedUrl
 }
 
+const elapsed = (start: number) => Math.round(performance.now() - start)
+
 async function extractAndSave(kind: DocKind, id: string, data: ArrayBuffer, onProgress: OnProgress): Promise<void> {
+  const started = performance.now()
   const pages = await extractPdfPages(data, (page, total) => onProgress(id, { step: 'extracting', page, total }))
-  if (!pages.some((p) => p.text)) {
+  const { pdf_type, text_pages } = classifyPdf(pages)
+  if (pdf_type === 'scanned') {
+    // Recorded so the list can show it as scanned, then rejected: there is no OCR yet.
+    await updateRow(kind, id, { page_count: pages.length, pdf_type, text_pages, extraction_ms: elapsed(started) })
     throw new LeaseError('no_text', 'No selectable text found. This looks like a scanned PDF, and OCR is not supported yet.')
   }
   await savePages(kind, id, pages)
-  await updateRow(kind, id, { page_count: pages.length, status: 'extracted' })
+  await updateRow(kind, id, {
+    page_count: pages.length,
+    pdf_type,
+    text_pages,
+    extraction_ms: elapsed(started),
+    status: 'extracted',
+  })
 }
 
 async function savePages(kind: DocKind, id: string, pages: ExtractedPage[]): Promise<void> {

@@ -292,7 +292,7 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--primary); outli
 .lease-table td { padding: 0.75rem; border-bottom: 1px solid var(--border); vertical-align: middle; }
 .lease-table tbody tr:last-child td { border-bottom: none; }
 .lease-table tbody tr:hover { background: var(--surface-muted); }
-.lease-table .col-actions { width: 88px; }
+.lease-table .col-actions { width: 120px; }
 .row-actions { display: flex; gap: 0.25rem; justify-content: flex-end; }
 
 .file-cell { display: flex; align-items: center; gap: 0.625rem; min-width: 0; }
@@ -480,7 +480,7 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--primary); outli
 .file-text .row-title, .file-text .row-error { display: block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* width + max-width:0 lets the first column take the slack and ellipsize instead of widening the table. */
 .lease-table .cell-primary { width: 34%; max-width: 0; }
-.lease-table .cell-address { width: 26%; }
+.lease-table .cell-address { width: 24%; }
 .lease-table td { vertical-align: middle; }
 .data-table .cell-primary { min-width: 180px; }
 .data-table .cell-primary .muted { line-height: 1.4; }
@@ -641,3 +641,54 @@ a.page-ref:hover { background: var(--primary); color: #fff; }
   border-radius: 999px; background: var(--neutral-bg); color: var(--neutral); font-size: 0.75rem; font-weight: 600;
 }
 .tab.active .tab-count { background: var(--primary-soft); color: var(--primary); }
+
+/* Clauses and processing metrics */
+.clause-list { list-style: none; margin: 0.75rem 0 0; padding: 0; }
+.clause { padding: 0.8rem 0; border-top: 1px solid var(--border); }
+.clause-head { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+.clause-title { overflow-wrap: anywhere; }
+.clause-summary { margin: 0.4rem 0 0; line-height: 1.5; font-size: 0.9rem; }
+.lease-table .cell-extraction { white-space: nowrap; }
+@container (max-width: 640px) {
+  .responsive-table td.cell-extraction { white-space: normal; }
+}
+
+/* File type tag next to the file name, and the processing-details popover */
+.file-meta { display: flex; align-items: center; gap: 0.4rem; min-width: 0; }
+.file-meta .ellipsis { min-width: 0; }
+.file-type {
+  flex: none; display: inline-block; padding: 0 0.4rem; border-radius: 4px;
+  font-size: 0.6875rem; font-weight: 600; line-height: 1.5; white-space: nowrap;
+  background: var(--neutral-bg); color: var(--neutral);
+}
+.file-type.scanned, .file-type.mixed { background: var(--warning-bg); color: var(--warning); }
+.processing-popover {
+  position: fixed; z-index: 60; padding: 0.75rem 0.875rem;
+  background: var(--surface); color: var(--text);
+  border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow-lg);
+  font-size: 0.8125rem; pointer-events: none;
+}
+.processing-popover.above { transform: translateY(-100%); }
+.popover-title { display: block; margin-bottom: 0.4rem; font-size: 0.8125rem; }
+.processing-popover dl { margin: 0; }
+.popover-row { display: flex; justify-content: space-between; gap: 1rem; padding: 0.25rem 0; border-top: 1px solid var(--border); }
+.popover-row:first-child { border-top: none; }
+.popover-row dt { color: var(--muted); }
+.popover-row dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; }
+.popover-row.total dd { font-weight: 700; }
+.popover-note { margin: 0.5rem 0 0; color: var(--muted); font-size: 0.75rem; line-height: 1.4; }
+
+/* Rent schedule */
+.rent-schedule-card { container-type: inline-size; }
+.rent-schedule-card h2 { display: flex; align-items: center; gap: 0.25rem; }
+.schedule-table { margin-top: 0.25rem; }
+.schedule-table .cell-primary { min-width: 0; }
+.period-cell { display: flex; align-items: center; flex-wrap: wrap; gap: 0.4rem; }
+.schedule-table tr.current-period td { background: var(--success-bg); }
+.schedule-footnote { margin: 0.75rem 0 0; }
+
+/* Informational notice (blue) and an empty state with an action */
+.notice-info { background: var(--info-bg); color: var(--info); }
+.notice .button-secondary { flex: none; padding: 0.35rem 0.8rem; font-size: 0.8125rem; }
+.empty-action { display: flex; flex-direction: column; align-items: flex-start; gap: 0.75rem; }
+.empty-action p { margin: 0; }

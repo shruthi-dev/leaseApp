@@ -9,7 +9,9 @@ import {
   AnalysisError,
   buildLeaseDocument,
   extractAmendmentTerms,
+  extractLeaseDetails,
   extractLeaseTerms,
+  type DetailPart,
   MAX_INPUT_CHARS,
   type AmendmentTerms,
   type LeaseTerms,
@@ -63,23 +65,28 @@ Deno.serve(async (req) => {
   const { data: userData, error: userError } = await supabase.auth.getUser(token)
   if (userError || !userData.user) return json({ error: 'Not signed in' }, 401)
 
-  let body: { lease_id?: unknown; amendment_id?: unknown } = {}
+  let body: { lease_id?: unknown; amendment_id?: unknown; parts?: unknown } = {}
   try {
     body = await req.json()
   } catch {
     // handled below
   }
   if (typeof body.amendment_id === 'string' && body.amendment_id) return analyzeAmendment(supabase, body.amendment_id)
-  if (typeof body.lease_id === 'string' && body.lease_id) return analyzeLease(supabase, body.lease_id)
+  if (typeof body.lease_id === 'string' && body.lease_id) {
+    // parts: fetch only these (e.g. clauses an older lease lacks) and leave everything else untouched.
+    const parts = Array.isArray(body.parts) ? body.parts.filter((x): x is DetailPart => x === 'clauses' || x === 'rent_schedule') : []
+    return parts.length ? extractMissingParts(supabase, body.lease_id, parts) : analyzeLease(supabase, body.lease_id)
+  }
   return json({ error: 'lease_id or amendment_id is required' }, 400)
 })
 
 // ---------- Leases ----------
 
 async function analyzeLease(supabase: SupabaseClient, leaseId: string): Promise<Response> {
-  const job = await claim(supabase, 'leases', leaseId, 'id, page_count')
+  const job = await claim(supabase, 'leases', leaseId, 'id, page_count, analyzed_at')
   if (job instanceof Response) return job
   const { row, fail } = job
+  const started = Date.now()
 
   const apiKey = await getApiKey()
   if (!apiKey) return fail('api_key_missing', 'The Claude API key is not configured. See supabase/functions/analyze-lease/config.example.ts.', 500)
@@ -104,6 +111,10 @@ async function analyzeLease(supabase: SupabaseClient, leaseId: string): Promise<
       ...Object.fromEntries(FIELDS.map((f) => [f, sanitized[f]?.value ?? null])),
       currency: currencyCode(terms.currency),
       summary: terms.summary,
+      clauses: sanitizeClauses(terms.clauses, pageCount),
+      rent_schedule: sanitizeRentSchedule(terms.rent_schedule, pageCount),
+      extracted_parts: ['terms', 'clauses', 'rent_schedule'],
+      analysis_ms: Date.now() - started,
       source_pages: Object.fromEntries(
         Object.entries(sanitized).flatMap(([f, e]) => (e.page !== null ? [[f, e.page]] : [])),
       ),
@@ -119,12 +130,53 @@ async function analyzeLease(supabase: SupabaseClient, leaseId: string): Promise<
   return json({ ok: true })
 }
 
+/**
+ * Fills in parts an analyzed lease is missing (clauses, rent schedule) without re-running the key
+ * terms, so edits are kept. Does not change the lease's status; on failure nothing is modified.
+ */
+async function extractMissingParts(supabase: SupabaseClient, leaseId: string, parts: DetailPart[]): Promise<Response> {
+  const { data: lease, error } = await supabase
+    .from('leases')
+    .select('id, status, analyzed_at, page_count, extracted_parts')
+    .eq('id', leaseId)
+    .maybeSingle()
+  if (error) return json({ error: error.message, code: 'load_failed' }, 500)
+  if (!lease) return json({ error: 'Not found' }, 404)
+  if (!lease.analyzed_at) return json({ error: 'The lease has not been analyzed yet.' }, 409)
+  if (lease.status === 'analyzing') return json({ error: 'This document is already being analyzed.' }, 409)
+
+  const apiKey = await getApiKey()
+  if (!apiKey) return json({ error: 'The Claude API key is not configured.', code: 'api_key_missing' }, 500)
+  const doc = await loadDocument(supabase, 'lease_pages', 'lease_id', leaseId)
+  if (doc instanceof Error) return json({ error: doc.message, code: doc.name }, doc.name === 'load_failed' ? 500 : 422)
+
+  let found: Awaited<ReturnType<typeof extractLeaseDetails>>
+  try {
+    found = await extractLeaseDetails(apiKey, doc.text, parts)
+  } catch (err) {
+    console.error('Claude request failed', err)
+    const { code, message } = describeError(err)
+    return json({ error: message, code }, 502)
+  }
+
+  const pageCount = (lease.page_count as number | null) ?? doc.pageCount
+  const update: Record<string, unknown> = {
+    extracted_parts: [...new Set([...((lease.extracted_parts as string[]) ?? []), ...parts])],
+  }
+  if (found.clauses) update.clauses = sanitizeClauses(found.clauses, pageCount)
+  if (found.rent_schedule) update.rent_schedule = sanitizeRentSchedule(found.rent_schedule, pageCount)
+  const { error: saveError } = await supabase.from('leases').update(update).eq('id', leaseId)
+  if (saveError) return json({ error: `Could not save the results: ${saveError.message}`, code: 'save_failed' }, 500)
+  return json({ ok: true })
+}
+
 // ---------- Amendments ----------
 
 async function analyzeAmendment(supabase: SupabaseClient, amendmentId: string): Promise<Response> {
-  const job = await claim(supabase, 'lease_amendments', amendmentId, 'id, lease_id, page_count, created_at')
+  const job = await claim(supabase, 'lease_amendments', amendmentId, 'id, lease_id, page_count, created_at, analyzed_at')
   if (job instanceof Response) return job
   const { row, fail } = job
+  const started = Date.now()
 
   const apiKey = await getApiKey()
   if (!apiKey) return fail('api_key_missing', 'The Claude API key is not configured. See supabase/functions/analyze-lease/config.example.ts.', 500)
@@ -148,6 +200,11 @@ async function analyzeAmendment(supabase: SupabaseClient, amendmentId: string): 
   const changes: Record<string, unknown> = sanitizeFields(terms, pageCount)
   const currency = currencyCode(terms.currency)
   if (currency && currency !== current.currency) changes.currency = { value: currency, page: null, quote: null, derived: false }
+  // A new rent schedule replaces the current one (stored like any other changed term).
+  const schedule = sanitizeRentSchedule(terms.rent_schedule, pageCount)
+  if (schedule.length) {
+    changes.rent_schedule = { value: schedule, page: schedule[0].page, quote: schedule[0].quote, derived: false }
+  }
 
   const { error: saveError } = await supabase
     .from('lease_amendments')
@@ -156,6 +213,7 @@ async function analyzeAmendment(supabase: SupabaseClient, amendmentId: string): 
       effective_date: isoDate(terms.effective_date.value),
       summary: terms.summary,
       changes,
+      analysis_ms: Date.now() - started,
       status: 'completed',
       error_message: null,
       error_code: null,
@@ -178,7 +236,7 @@ async function currentTerms(
 ): Promise<Record<string, unknown> | Error> {
   const { data: lease, error } = await supabase
     .from('leases')
-    .select([...FIELDS, 'currency'].join(', '))
+    .select([...FIELDS, 'currency', 'rent_schedule'].join(', '))
     .eq('id', leaseId)
     .single()
   if (error) return new Error(error.message)
@@ -229,9 +287,15 @@ async function claim(
   }
 
   // code: stable key the app translates (see errors.* in src/i18n); message: technical detail.
+  // A document that already has results (analyzed_at set) keeps them: it goes back to 'completed'
+  // and the error is kept as a note about the failed re-run. Only a first analysis ends 'failed'.
+  const hadResults = !!(row as unknown as { analyzed_at: string | null }).analyzed_at
   const fail: Fail = async (code, message, status) => {
-    await supabase.from(table).update({ status: 'failed', error_code: code, error_message: message }).eq('id', id)
-    return json({ error: message, code }, status)
+    await supabase
+      .from(table)
+      .update({ status: hadResults ? 'completed' : 'failed', error_code: code, error_message: message })
+      .eq('id', id)
+    return json({ error: message, code, kept_previous_results: hadResults }, status)
   }
   return { row: row as unknown as Record<string, unknown>, fail }
 }
@@ -280,6 +344,35 @@ function sanitizeFields(
     out[field] = { value, page, quote: t.quote?.trim().slice(0, 400) || null, derived: t.derived }
   }
   return out
+}
+
+/** Keeps rows with at least one amount; validates dates, amounts and pages; caps the list. */
+function sanitizeRentSchedule(rows: LeaseTerms['rent_schedule'], pageCount: number) {
+  return (rows ?? [])
+    .slice(0, 120)
+    .map((r) => ({
+      start_date: isoDate(r.start_date),
+      end_date: isoDate(r.end_date),
+      period_label: r.period_label?.trim().slice(0, 120) || null,
+      monthly_rent: amount(r.monthly_rent),
+      annual_rent: amount(r.annual_rent),
+      rent_per_sqft: amount(r.rent_per_sqft),
+      note: r.note?.trim().slice(0, 200) || null,
+      page: r.page !== null && r.page >= 1 && r.page <= pageCount ? r.page : null,
+      quote: r.quote?.trim().slice(0, 400) || null,
+    }))
+    .filter((r) => r.monthly_rent !== null || r.annual_rent !== null || r.rent_per_sqft !== null || r.note !== null)
+}
+
+/** Keeps well-formed clauses with valid pages; caps the list so a runaway answer can't bloat the row. */
+function sanitizeClauses(clauses: LeaseTerms['clauses'], pageCount: number) {
+  return (clauses ?? []).slice(0, 60).map((c) => ({
+    type: c.type,
+    title: c.title?.trim().slice(0, 200) || null,
+    summary: c.summary?.trim().slice(0, 600) || null,
+    page: c.page !== null && c.page >= 1 && c.page <= pageCount ? c.page : null,
+    quote: c.quote?.trim().slice(0, 400) || null,
+  }))
 }
 
 function describeError(err: unknown): { code: string; message: string } {

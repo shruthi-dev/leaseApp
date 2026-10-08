@@ -1,6 +1,7 @@
 import { useSearchParams } from 'react-router-dom'
 import { RentRollReport } from '../components/RentRollReport'
 import { ExpirationScheduleReport } from '../components/ExpirationScheduleReport'
+import { ProcessingLogReport } from '../components/ProcessingLogReport'
 import { Alert } from '../components/Alert'
 import { useLeases } from '../lib/useLeases'
 import { todayIso } from '../lib/portfolio'
@@ -11,6 +12,7 @@ import { t, type MessageKey } from '../i18n'
 const TABS: { id: string; label: MessageKey }[] = [
   { id: 'rent-roll', label: 'reports.rentRoll' },
   { id: 'schedule', label: 'reports.schedule' },
+  { id: 'processing', label: 'processing.logTitle' },
 ]
 
 export function ReportsPage() {
@@ -52,6 +54,8 @@ export function ReportsPage() {
             <p className="empty muted">{t('common.loading')}</p>
           ) : tab === 'rent-roll' ? (
             <RentRollReport leases={leases} today={today} />
+          ) : tab === 'processing' ? (
+            <ProcessingLogReport leases={leases} today={today} />
           ) : (
             <ExpirationScheduleReport leases={leases} today={today} initialIncludeExpired={params.get('expired') === '1'} />
           )}

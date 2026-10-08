@@ -3,6 +3,9 @@ import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useLease } from '../lib/useLease'
 import {
   analyzeLease,
+  extractMissingDetails,
+  lastRunFailed,
+  missingParts,
   canRetry,
   deleteLease,
   getLeaseFileUrl,
@@ -17,9 +20,13 @@ import {
 import { formatTerm, todayIso } from '../lib/portfolio'
 import { formatBytes, formatDate, formatMoney } from '../lib/format'
 import { errorMessage } from '../lib/errors'
-import { leaseErrorText } from '../lib/leaseErrors'
+import { describeLeaseError, leaseErrorText } from '../lib/leaseErrors'
 import { StatusBadge } from '../components/StatusBadge'
 import { AmendmentsCard, formatChange } from '../components/AmendmentsCard'
+import { ClausesCard } from '../components/ClausesCard'
+import { RentScheduleCard } from '../components/RentScheduleCard'
+import { currentPeriod, hasRentSchedule, monthlyOf } from '../lib/rentSchedule'
+import { clauseCount, fieldCounts, formatDuration, totalMs } from '../lib/metrics'
 import { amendmentTitle, applyAmendments } from '../lib/amendments'
 import { openPdf } from '../lib/openPdf'
 import { LeaseTermsForm } from '../components/LeaseTermsForm'
@@ -41,11 +48,14 @@ export function LeaseDetailPage() {
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [confirmReanalyze, setConfirmReanalyze] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [extracting, setExtracting] = useState(false)
   // Tab lives in the URL so links and Back work; pickRequest asks the amendments tab to open the file picker.
   const [params, setParams] = useSearchParams()
-  const tab = params.get('tab') === 'amendments' ? 'amendments' : 'terms'
+  type Tab = 'terms' | 'clauses' | 'amendments'
+  const tabParam = params.get('tab')
+  const tab: Tab = tabParam === 'amendments' || tabParam === 'clauses' ? tabParam : 'terms'
   const [pickRequest, setPickRequest] = useState(0)
-  const showTab = (next: 'terms' | 'amendments') => setParams(next === 'terms' ? {} : { tab: next }, { replace: true })
+  const showTab = (next: Tab) => setParams(next === 'terms' ? {} : { tab: next }, { replace: true })
 
   const filePath = lease?.file_path
   useEffect(() => {
@@ -67,7 +77,9 @@ export function LeaseDetailPage() {
   }
 
   const today = todayIso()
-  const analyzed = lease.status === 'completed'
+  // A lease with results keeps showing them while it is re-analyzed or after a failed re-run.
+  const analyzed = !!lease.analyzed_at
+  const missing = missingParts(lease)
   // Current terms = original lease terms with completed amendments applied.
   const current = applyAmendments(lease)
 
@@ -114,6 +126,23 @@ export function LeaseDetailPage() {
       // The function records failures on the lease; shown after refresh.
     } finally {
       setRetrying(false)
+      refresh()
+    }
+  }
+
+  async function extractMissing() {
+    if (!lease) return
+    setExtracting(true)
+    setActionError(null)
+    setNotice(null)
+    try {
+      await extractMissingDetails(lease)
+      setNotice(t('missing.done'))
+    } catch (err) {
+      // Nothing on the lease changes when this fails.
+      setActionError(t('missing.failed', { message: describeLeaseError(err) }))
+    } finally {
+      setExtracting(false)
       refresh()
     }
   }
@@ -191,6 +220,25 @@ export function LeaseDetailPage() {
       {lease.status === 'failed' && (lease.error_code || lease.error_message) && (
         <Alert kind="error" message={leaseErrorText(lease.error_code, lease.error_message)} />
       )}
+      {lastRunFailed(lease) && (
+        <div className="notice">
+          <span>{t('detail.rerunFailed', { message: leaseErrorText(lease.error_code, lease.error_message) })}</span>
+        </div>
+      )}
+      {missing.length > 0 && lease.status !== 'analyzing' && (
+        <div className="notice notice-info">
+          <span>
+            {missing.length === 2
+              ? t('missing.both')
+              : missing[0] === 'clauses'
+                ? t('missing.clauses')
+                : t('missing.rentSchedule')}
+          </span>
+          <button className="button-secondary" onClick={extractMissing} disabled={extracting || retrying}>
+            {extracting ? t('missing.running') : t('missing.button')}
+          </button>
+        </div>
+      )}
       <Alert kind="error" message={actionError} />
       <Alert kind="success" message={notice} />
 
@@ -207,6 +255,10 @@ export function LeaseDetailPage() {
                 <button role="tab" aria-selected={tab === 'terms'} className={tab === 'terms' ? 'tab active' : 'tab'} onClick={() => showTab('terms')}>
                   {t('detail.keyTerms')}
                 </button>
+                <button role="tab" aria-selected={tab === 'clauses'} className={tab === 'clauses' ? 'tab active' : 'tab'} onClick={() => showTab('clauses')}>
+                  {t('clauses.title')}
+                  <span className="tab-count">{clauseCount(lease) ?? '–'}</span>
+                </button>
                 <button role="tab" aria-selected={tab === 'amendments'} className={tab === 'amendments' ? 'tab active' : 'tab'} onClick={() => showTab('amendments')}>
                   {t('amendments.title')}
                   <span className="tab-count">{lease.amendments?.length ?? 0}</span>
@@ -221,6 +273,13 @@ export function LeaseDetailPage() {
               </div>
             ) : tab === 'amendments' ? (
               <AmendmentsCard lease={lease} onChanged={refresh} pickRequest={pickRequest} />
+            ) : tab === 'clauses' ? (
+              <ClausesCard
+                lease={lease}
+                pdfUrl={pdfUrl}
+                onExtract={missing.includes('clauses') ? extractMissing : undefined}
+                extracting={extracting}
+              />
             ) : (
               <>
                 {lease.summary && (
@@ -244,6 +303,7 @@ export function LeaseDetailPage() {
                     <Term lease={current} pdfUrl={pdfUrl} field="renewal_options" label="columns.renewal" />
                   </dl>
                 </div>
+                <RentScheduleCard lease={current} today={today} />
               </>
             )}
           </div>
@@ -259,6 +319,13 @@ export function LeaseDetailPage() {
                 </Fact>
                 <Fact label={t('reports.remaining')}>{formatTerm(today, current.expiration_date)}</Fact>
                 <Fact label={t('columns.monthlyRent')}>{formatMoney(current.monthly_rent, current.currency)}</Fact>
+                {(() => {
+                  // When the lease lists a rent schedule, show the rent for today's period too.
+                  const now = hasRentSchedule(current.rent_schedule) ? currentPeriod(current.rent_schedule, today) : null
+                  return now && monthlyOf(now) !== null && monthlyOf(now) !== current.monthly_rent ? (
+                    <Fact label={t('rentSchedule.currentRent')}>{formatMoney(monthlyOf(now), current.currency)}</Fact>
+                  ) : null
+                })()}
                 <Fact label={t('reports.annualRent')}>
                   {formatMoney(current.monthly_rent !== null ? current.monthly_rent * 12 : null, current.currency)}
                 </Fact>
@@ -270,11 +337,55 @@ export function LeaseDetailPage() {
                 <Fact label={t('detail.fileName')}>
                   <span className="break">{lease.file_name}</span>
                 </Fact>
-                <Fact label={t('detail.pages')}>{lease.page_count ?? '—'}</Fact>
+                <Fact label={t('processing.fileType')}>
+                  {lease.pdf_type ? (
+                    <span
+                      className={`badge ${lease.pdf_type === 'digital' ? 'badge-success' : 'badge-warning'}`}
+                      title={t(`pdfType.${lease.pdf_type}Hint` as MessageKey)}
+                    >
+                      {t(`pdfType.${lease.pdf_type}` as MessageKey)}
+                    </span>
+                  ) : (
+                    '—'
+                  )}
+                </Fact>
+                <Fact label={t('detail.pages')}>
+                  {lease.page_count === null
+                    ? '—'
+                    : lease.text_pages !== null && lease.text_pages !== lease.page_count
+                      ? t('processing.pagesWithText', { text: lease.text_pages, total: lease.page_count })
+                      : lease.page_count}
+                </Fact>
                 <Fact label={t('detail.size')}>{formatBytes(lease.file_size) || '—'}</Fact>
                 <Fact label={t('detail.uploadedOn')}>{formatDate(lease.created_at.slice(0, 10))}</Fact>
                 <Fact label={t('detail.analyzedOn')}>{lease.analyzed_at ? formatDate(lease.analyzed_at.slice(0, 10)) : '—'}</Fact>
               </dl>
+            </div>
+            <div className="card">
+              <h2>{t('processing.title')}</h2>
+              <dl className="facts">
+                <Fact label={t('processing.upload')}>{formatDuration(lease.upload_ms)}</Fact>
+                <Fact label={t('processing.extraction')}>{formatDuration(lease.extraction_ms)}</Fact>
+                <Fact label={t('processing.analysis')}>{formatDuration(lease.analysis_ms)}</Fact>
+                <Fact label={t('processing.total')}>
+                  <strong>{formatDuration(totalMs(lease))}</strong>
+                </Fact>
+                {analyzed && (
+                  <>
+                    <Fact label={t('processing.fields')}>
+                      {(() => {
+                        const f = fieldCounts(lease)
+                        return f.calculated
+                          ? t('processing.fieldsValueCalc', { found: f.found, total: f.total, calculated: f.calculated })
+                          : t('processing.fieldsValue', { found: f.found, total: f.total })
+                      })()}
+                    </Fact>
+                    <Fact label={t('processing.clauses')}>{clauseCount(lease) ?? t('processing.notRecorded')}</Fact>
+                  </>
+                )}
+              </dl>
+              {lease.analysis_ms === null && analyzed && <p className="muted small">{t('processing.oldNote')}</p>}
+
             </div>
           </aside>
         </div>

@@ -9,12 +9,16 @@ import {
   type ProcessedDoc,
 } from './documents'
 import type { Lease, LeaseField } from './leases'
+import type { RentPeriod } from './rentSchedule'
 
-export type AmendableField = LeaseField | 'currency'
+export type AmendableField = LeaseField | 'currency' | 'rent_schedule'
+
+/** A changed value: text, number, or (for rent_schedule) the new list of periods. */
+export type ChangeValue = string | number | RentPeriod[]
 
 export interface AmendmentChange {
   /** The value after the amendment. */
-  value: string | number
+  value: ChangeValue
   page: number | null
   quote: string | null
   /** true when Claude calculated it (e.g. "extend by 3 years") rather than reading it. */
@@ -35,7 +39,7 @@ export interface Amendment extends ProcessedDoc {
 
 /** For each amended field: the amendment that last changed it and the original lease value. */
 export type AmendedFields = Partial<
-  Record<AmendableField, { amendment: Amendment; change: AmendmentChange; original: string | number | null }>
+  Record<AmendableField, { amendment: Amendment; change: AmendmentChange; original: ChangeValue | null }>
 >
 
 /** Fields in display order; used when listing what an amendment changed. */
@@ -50,6 +54,7 @@ export const AMENDABLE_FIELDS: AmendableField[] = [
   'currency',
   'security_deposit',
   'renewal_options',
+  'rent_schedule',
 ]
 
 /** Effective-date order (undated last), then upload order. Later amendments win. */
@@ -75,10 +80,10 @@ export function applyAmendments(lease: Lease): Lease {
     for (const field of AMENDABLE_FIELDS) {
       const change = amendment.changes?.[field]
       if (!change || change.value === null || change.value === undefined) continue
-      const original = amended[field]?.original ?? (lease[field] as string | number | null)
+      const original = amended[field]?.original ?? (lease[field] as ChangeValue | null)
       ;(current as unknown as Record<string, unknown>)[field] = change.value
       amended[field] = { amendment, change, original }
-      if (field !== 'currency') {
+      if (field !== 'currency' && field !== 'rent_schedule') {
         delete current.source_pages[field]
         current.evidence[field] = { page: change.page, quote: change.quote, derived: change.derived }
       }

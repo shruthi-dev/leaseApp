@@ -11,6 +11,8 @@ import {
   type ProcessedDoc,
 } from './documents'
 import type { AmendedFields, Amendment } from './amendments'
+import type { Clause } from './clauses'
+import type { RentPeriod } from './rentSchedule'
 
 export {
   canRetry,
@@ -59,6 +61,12 @@ export interface Lease extends ProcessedDoc {
   summary: string | null
   source_pages: Partial<Record<LeaseField, number>>
   evidence: Partial<Record<LeaseField, Evidence>>
+  /** Notable clauses Claude found, in document order. */
+  clauses: Clause[]
+  /** Rent per period, when the lease lists one (empty otherwise). */
+  rent_schedule: RentPeriod[]
+  /** Parts extracted so far: 'terms', 'clauses', 'rent_schedule'. */
+  extracted_parts: string[]
   analyzed_at: string | null
   created_at: string
   /** Loaded alongside the lease. */
@@ -145,6 +153,27 @@ export function retryLease(lease: Lease, onProgress: OnProgress): Promise<void> 
 /** Re-runs Claude on an already extracted lease (replaces the key terms). */
 export function analyzeLease(leaseId: string): Promise<void> {
   return analyzeDocument('lease', leaseId)
+}
+
+/** Parts an analyzed lease has not had extracted yet (it was analyzed before they existed). */
+export type DetailPart = 'clauses' | 'rent_schedule'
+export function missingParts(lease: Lease): DetailPart[] {
+  if (!lease.analyzed_at) return []
+  const done = lease.extracted_parts ?? []
+  return (['clauses', 'rent_schedule'] as const).filter((p) => !done.includes(p))
+}
+
+/** True when the last re-analysis failed but the earlier results were kept. */
+export function lastRunFailed(lease: Lease): boolean {
+  return lease.status === 'completed' && !!lease.error_code
+}
+
+/**
+ * Extracts only the missing parts (clauses, rent schedule) without re-running the key terms, so
+ * edits are kept. Leaves the lease unchanged if it fails.
+ */
+export function extractMissingDetails(lease: Lease): Promise<void> {
+  return analyzeDocument('lease', lease.id, { parts: missingParts(lease) })
 }
 
 export async function deleteLease(lease: Lease): Promise<void> {

@@ -106,6 +106,13 @@ export const CheckIcon = (p: SVGProps<SVGSVGElement>) => (
   </Icon>
 )
 
+export const ClockIcon = (p: SVGProps<SVGSVGElement>) => (
+  <Icon {...p}>
+    <circle cx="12" cy="12" r="9" />
+    <polyline points="12 7 12 12 15.5 14" />
+  </Icon>
+)
+
 export const ChevronsLeftIcon = (p: SVGProps<SVGSVGElement>) => (
   <Icon {...p}>
     <polyline points="11 17 6 12 11 7" />

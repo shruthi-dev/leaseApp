@@ -1,8 +1,9 @@
 import { Link, useNavigate } from 'react-router-dom'
-import { canRetry, isInProgress, leaseTitle, type Lease, type LeaseField, type Progress } from '../lib/leases'
+import { canRetry, isInProgress, lastRunFailed, leaseTitle, type Lease, type LeaseField, type Progress } from '../lib/leases'
 import { formatDate, formatMoney } from '../lib/format'
 import { leaseErrorText } from '../lib/leaseErrors'
 import { StatusBadge } from './StatusBadge'
+import { FileTypeTag, ProcessingInfo } from './ProcessingInfo'
 import { FileIcon, RetryIcon, TrashIcon } from './Icons'
 import { t } from '../i18n'
 
@@ -16,7 +17,7 @@ interface Props {
 
 /**
  * Short columns only, so the table fits without horizontal scrolling; everything else
- * lives on the lease overview page. Below 720px rows render as stacked cards.
+ * lives on the lease overview page. Below 640px of width rows render as stacked cards.
  */
 export function LeaseTable({ leases, progress, busyIds, onRetry, onDelete }: Props) {
   const navigate = useNavigate()
@@ -39,6 +40,7 @@ export function LeaseTable({ leases, progress, busyIds, onRetry, onDelete }: Pro
         {leases.map((lease) => {
           const busy = busyIds.has(lease.id) || !!progress[lease.id]
           const href = `/leases/${lease.id}`
+          const failed = lease.status === 'failed' && !!(lease.error_code || lease.error_message)
           return (
             <tr
               key={lease.id}
@@ -55,23 +57,31 @@ export function LeaseTable({ leases, progress, busyIds, onRetry, onDelete }: Pro
                     <Link to={href} className="row-title" title={leaseTitle(lease)}>
                       {leaseTitle(lease)}
                     </Link>
-                    {lease.status === 'failed' && (lease.error_code || lease.error_message) ? (
-                      <div className="row-error small" title={leaseErrorText(lease.error_code, lease.error_message)}>
-                        {leaseErrorText(lease.error_code, lease.error_message)}
-                      </div>
-                    ) : (
-                      <div className="muted small ellipsis" title={lease.file_name}>
-                        {lease.tenant ? lease.file_name : t('leases.uploaded', { date: formatDate(lease.created_at.slice(0, 10)) })}
-                        {!!lease.amendments?.length && (
-                          <>
-                            {' · '}
-                            {lease.amendments.length === 1
-                              ? t('leases.amendmentCountOne')
-                              : t('leases.amendmentCount', { count: lease.amendments.length })}
-                          </>
-                        )}
-                      </div>
-                    )}
+                    <div className="file-meta small">
+                      {failed ? (
+                        <span className="row-error ellipsis" title={leaseErrorText(lease.error_code, lease.error_message)}>
+                          {leaseErrorText(lease.error_code, lease.error_message)}
+                        </span>
+                      ) : (
+                        <span className="muted ellipsis" title={lease.file_name}>
+                          {lease.tenant ? lease.file_name : t('leases.uploaded', { date: formatDate(lease.created_at.slice(0, 10)) })}
+                          {!!lease.amendments?.length && (
+                            <>
+                              {' · '}
+                              {lease.amendments.length === 1
+                                ? t('leases.amendmentCountOne')
+                                : t('leases.amendmentCount', { count: lease.amendments.length })}
+                            </>
+                          )}
+                        </span>
+                      )}
+                      <FileTypeTag type={lease.pdf_type} />
+                      {lastRunFailed(lease) && (
+                        <span className="file-type mixed" title={leaseErrorText(lease.error_code, lease.error_message)}>
+                          {t('leases.rerunFailedTag')}
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
               </td>
@@ -122,6 +132,7 @@ export function LeaseTable({ leases, progress, busyIds, onRetry, onDelete }: Pro
                       <RetryIcon />
                     </button>
                   )}
+                  <ProcessingInfo doc={lease} label={leaseTitle(lease)} />
                   <button
                     className="icon-button danger"
                     title={t('common.delete')}

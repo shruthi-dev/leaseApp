@@ -7,6 +7,7 @@ import {
   sortAmendments,
   uploadAmendment,
   type AmendableField,
+  type ChangeValue,
   type Amendment,
 } from '../lib/amendments'
 import { canRetry, isInProgress, validatePdf, MAX_FILE_BYTES, type Progress } from '../lib/documents'
@@ -32,11 +33,13 @@ const FIELD_LABEL: Record<AmendableField, MessageKey> = {
   currency: 'detail.currency',
   security_deposit: 'columns.deposit',
   renewal_options: 'columns.renewal',
+  rent_schedule: 'rentSchedule.title',
 }
 
 /** Display text for an amended value. */
-export function formatChange(field: AmendableField, value: string | number | null, currency: string | null): string {
+export function formatChange(field: AmendableField, value: ChangeValue | null, currency: string | null): string {
   if (value === null || value === undefined) return '—'
+  if (Array.isArray(value)) return value.length === 1 ? t('rentSchedule.periodsOne') : t('rentSchedule.periods', { count: value.length })
   if (field === 'commencement_date' || field === 'expiration_date') return formatDate(String(value))
   if (field === 'monthly_rent' || field === 'security_deposit') return formatMoney(Number(value), currency)
   return String(value)

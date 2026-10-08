@@ -55,8 +55,9 @@ export function remainingTerm(fromIso: string, toIsoDate: string): { years: numb
   return { years: Math.floor(months / 12), months: months % 12 }
 }
 
+/** Leases with results, including ones being re-analyzed (their previous results still apply). */
 export function analyzed(leases: Lease[]): Lease[] {
-  return leases.filter((l) => l.status === 'completed')
+  return leases.filter((l) => l.analyzed_at !== null)
 }
 
 export function leasePhase(lease: Lease, today: string): LeasePhase {

@@ -4,7 +4,17 @@ import { LeaseTable } from '../components/LeaseTable'
 import { ConfirmDialog } from '../components/ConfirmDialog'
 import { Alert } from '../components/Alert'
 import { SearchIcon } from '../components/Icons'
-import { deleteLease, MAX_FILE_BYTES, retryLease, uploadLease, validatePdf, type Lease, type Progress } from '../lib/leases'
+import {
+  deleteLease,
+  extractMissingDetails,
+  MAX_FILE_BYTES,
+  missingParts,
+  retryLease,
+  uploadLease,
+  validatePdf,
+  type Lease,
+  type Progress,
+} from '../lib/leases'
 import { useLeases } from '../lib/useLeases'
 import { errorMessage } from '../lib/errors'
 import { describeLeaseError } from '../lib/leaseErrors'
@@ -18,6 +28,30 @@ export function LeasesPage() {
   const [query, setQuery] = useState('')
   const [toDelete, setToDelete] = useState<Lease | null>(null)
   const [deleting, setDeleting] = useState(false)
+  const [bulk, setBulk] = useState<{ done: number; total: number; failed: number } | null>(null)
+  const [bulkResult, setBulkResult] = useState<string | null>(null)
+
+  // Leases analyzed before clauses / rent schedules were extracted.
+  const needingDetails = leases.filter((l) => missingParts(l).length > 0 && l.status !== 'analyzing')
+
+  /** Fills in missing clauses and rent schedules one lease at a time; key terms and edits are untouched. */
+  async function extractAllMissing() {
+    const queue = needingDetails
+    let failed = 0
+    setBulkResult(null)
+    for (const [i, lease] of queue.entries()) {
+      setBulk({ done: i, total: queue.length, failed })
+      try {
+        await extractMissingDetails(lease)
+      } catch {
+        failed += 1
+      }
+      refresh()
+    }
+    setBulk(null)
+    setBulkResult(failed ? t('missing.bulkPartial', { failed, total: queue.length }) : t('missing.bulkDone', { count: queue.length }))
+    refresh()
+  }
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -116,6 +150,21 @@ export function LeasesPage() {
 
       <UploadDropzone onFiles={onFiles} />
 
+      {(needingDetails.length > 0 || bulk) && (
+        <div className="notice notice-info">
+          <span>
+            {bulk
+              ? t('missing.bulkProgress', { current: bulk.done + 1, total: bulk.total })
+              : needingDetails.length === 1
+                ? t('missing.bulkOne')
+                : t('missing.bulkMany', { count: needingDetails.length })}
+          </span>
+          <button className="button-secondary" onClick={extractAllMissing} disabled={!!bulk}>
+            {bulk ? t('missing.running') : t('missing.bulkButton')}
+          </button>
+        </div>
+      )}
+      <Alert kind="success" message={bulkResult} />
       {messages.length > 0 && (
         <div className="stack">
           {messages.map((m, i) => (
