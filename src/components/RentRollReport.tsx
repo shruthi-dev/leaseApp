@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { leaseTitle, type Lease } from '../lib/leases'
-import { analyzed, formatTerm, leasePhase, sumByCurrency, DEFAULT_CURRENCY } from '../lib/portfolio'
+import { analyzed, currentMonthlyRent, formatTerm, leasePhase, sumByCurrency, DEFAULT_CURRENCY } from '../lib/portfolio'
 import { formatDate, formatMoney } from '../lib/format'
 import { downloadCsv, toCsv } from '../lib/csv'
 import { ReportToolbar } from './ReportToolbar'
@@ -12,6 +12,8 @@ type SortKey = 'tenant' | 'expiration' | 'rent'
 /** Four short columns (secondary facts stacked beneath) so it fits without horizontal scrolling. */
 export function RentRollReport({ leases, today }: { leases: Lease[]; today: string }) {
   const [includeUpcoming, setIncludeUpcoming] = useState(false)
+  // Today's rent: the rent schedule's current period where the lease has one (matches the Dashboard).
+  const rent = (l: Lease) => currentMonthlyRent(l, today)
   const [sort, setSort] = useState<{ key: SortKey; dir: 1 | -1 }>({ key: 'expiration', dir: 1 })
 
   const rows = useMemo(() => {
@@ -21,7 +23,7 @@ export function RentRollReport({ leases, today }: { leases: Lease[]; today: stri
     })
     const value = (l: Lease): string | number => {
       if (sort.key === 'tenant') return leaseTitle(l).toLowerCase()
-      if (sort.key === 'rent') return l.monthly_rent ?? -1
+      if (sort.key === 'rent') return rent(l) ?? -1
       return l.expiration_date ?? '9999'
     }
     return picked.sort((a, b) => (value(a) < value(b) ? -sort.dir : value(a) > value(b) ? sort.dir : 0))
@@ -29,7 +31,7 @@ export function RentRollReport({ leases, today }: { leases: Lease[]; today: stri
 
   const totals = useMemo(() => {
     const deposits = new Map(sumByCurrency(rows, (l) => l.security_deposit))
-    return sumByCurrency(rows, (l) => l.monthly_rent).map(([currency, monthly]) => ({
+    return sumByCurrency(rows, rent).map(([currency, monthly]) => ({
       currency,
       monthly,
       deposit: deposits.get(currency) ?? 0,
@@ -38,7 +40,7 @@ export function RentRollReport({ leases, today }: { leases: Lease[]; today: stri
 
   function exportCsv() {
     const csv = toCsv(
-      ['Tenant', 'Landlord', 'Address', 'Premises', 'Commencement', 'Expiration', 'Remaining', 'Monthly rent', 'Annual rent', 'Security deposit', 'Currency', 'File'],
+      ['Tenant', 'Landlord', 'Address', 'Premises', 'Commencement', 'Expiration', 'Remaining', 'Current monthly rent', 'Current annual rent', 'Starting monthly rent', 'Security deposit', 'Currency', 'File'],
       rows.map((l) => [
         l.tenant,
         l.landlord,
@@ -47,8 +49,9 @@ export function RentRollReport({ leases, today }: { leases: Lease[]; today: stri
         l.commencement_date,
         l.expiration_date,
         formatTerm(today, l.expiration_date),
+        rent(l),
+        rent(l) !== null ? rent(l)! * 12 : null,
         l.monthly_rent,
-        l.monthly_rent !== null ? l.monthly_rent * 12 : null,
         l.security_deposit,
         l.currency ?? DEFAULT_CURRENCY,
         l.file_name,
@@ -78,6 +81,7 @@ export function RentRollReport({ leases, today }: { leases: Lease[]; today: stri
           <input type="checkbox" checked={includeUpcoming} onChange={(e) => setIncludeUpcoming(e.target.checked)} />
           {t('reports.includeUpcoming')}
         </label>
+        <span className="muted small">{t('reports.rentNote')}</span>
       </ReportToolbar>
 
       {rows.length === 0 ? (
@@ -88,7 +92,7 @@ export function RentRollReport({ leases, today }: { leases: Lease[]; today: stri
             <tr>
               {header('tenant', 'columns.tenant')}
               {header('expiration', 'columns.term')}
-              {header('rent', 'columns.monthlyRent', 'num')}
+              {header('rent', 'reports.currentRent', 'num')}
               <th className="num">{t('columns.deposit')}</th>
             </tr>
           </thead>
@@ -110,11 +114,17 @@ export function RentRollReport({ leases, today }: { leases: Lease[]; today: stri
                     {t('reports.remainingShort', { term: formatTerm(today, l.expiration_date) })}
                   </div>
                 </td>
-                <td className="num" data-label={t('columns.monthlyRent')}>
-                  <div className="nowrap">{formatMoney(l.monthly_rent, l.currency)}</div>
-                  {l.monthly_rent !== null && (
+                <td className="num" data-label={t('reports.currentRent')}>
+                  <div className="nowrap">{formatMoney(rent(l), l.currency)}</div>
+                  {rent(l) !== null && (
                     <div className="muted small nowrap">
-                      {t('reports.perYear', { amount: formatMoney(l.monthly_rent * 12, l.currency) })}
+                      {t('reports.perYear', { amount: formatMoney(rent(l)! * 12, l.currency) })}
+                    </div>
+                  )}
+                  {/* Rent stepped up (or down) under the schedule: keep the starting rent visible. */}
+                  {rent(l) !== l.monthly_rent && l.monthly_rent !== null && (
+                    <div className="muted small nowrap">
+                      {t('reports.startingRent', { amount: formatMoney(l.monthly_rent, l.currency) })}
                     </div>
                   )}
                 </td>
@@ -131,7 +141,7 @@ export function RentRollReport({ leases, today }: { leases: Lease[]; today: stri
                   {totals.length > 1 ? t('reports.totalCurrency', { currency: row.currency }) : t('reports.total')}
                   <span className="muted"> · {t('reports.leaseCount', { count: rows.length })}</span>
                 </td>
-                <td className="num" data-label={t('columns.monthlyRent')}>
+                <td className="num" data-label={t('reports.currentRent')}>
                   <div className="nowrap">{formatMoney(row.monthly, row.currency)}</div>
                   <div className="muted small nowrap">
                     {t('reports.perYear', { amount: formatMoney(row.monthly * 12, row.currency) })}

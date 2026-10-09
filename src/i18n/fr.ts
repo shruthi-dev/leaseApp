@@ -359,6 +359,9 @@ export const fr: Messages = {
     },
   },
   reports: {
+    currentRent: "Loyer actuel",
+    startingRent: "Initial {amount}",
+    rentNote: "Le loyer actuel suit l'échéancier de chaque bail lorsqu'il existe.",
     title: 'Rapports',
     subtitle: 'Au {date}. Seuls les baux dont Claude a terminé l’analyse sont inclus.',
     rentRoll: 'État locatif',

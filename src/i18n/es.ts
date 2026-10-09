@@ -358,6 +358,9 @@ export const es: Messages = {
     },
   },
   reports: {
+    currentRent: "Renta actual",
+    startingRent: "Inicial {amount}",
+    rentNote: "La renta actual usa el calendario de rentas de cada contrato cuando existe.",
     title: 'Informes',
     subtitle: 'A {date}. Solo se incluyen los contratos que Claude ha terminado de analizar.',
     rentRoll: 'Relación de rentas',

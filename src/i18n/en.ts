@@ -356,6 +356,9 @@ export const en = {
     },
   },
   reports: {
+    currentRent: "Current rent",
+    startingRent: "Starting {amount}",
+    rentNote: "Current rent uses each lease's rent schedule where one exists.",
     title: 'Reports',
     subtitle: 'As of {date}. Only leases Claude has finished analyzing are included.',
     rentRoll: 'Rent roll',

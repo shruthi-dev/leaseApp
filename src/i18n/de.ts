@@ -359,6 +359,9 @@ export const de: Messages = {
     },
   },
   reports: {
+    currentRent: "Aktuelle Miete",
+    startingRent: "Anfangs {amount}",
+    rentNote: "Die aktuelle Miete folgt der Mietstaffel des Vertrags, sofern vorhanden.",
     title: 'Berichte',
     subtitle: 'Stand {date}. Enthalten sind nur Mietverträge, deren Analyse durch Claude abgeschlossen ist.',
     rentRoll: 'Mieterliste',
