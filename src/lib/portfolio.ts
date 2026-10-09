@@ -3,6 +3,7 @@
 
 import type { Lease } from './leases'
 import { t } from '../i18n'
+import { currentPeriod, hasRentSchedule, monthlyOf } from './rentSchedule'
 
 /**
  * active    - commenced (or no commencement date) and not yet expired
@@ -106,7 +107,7 @@ export function summarize(leases: Lease[], today: string): PortfolioSummary {
     expired: by('expired'),
     undated: by('undated'),
     expiring12: sortByExpiration(active.filter((l) => isExpiringWithin(l, today, 12))),
-    activeMonthlyRent: sumByCurrency(active, (l) => l.monthly_rent),
+    activeMonthlyRent: sumByCurrency(active, (l) => currentMonthlyRent(l, today)),
   }
 }
 
@@ -142,4 +143,55 @@ export function formatTerm(today: string, expiration: string | null): string {
   const term = expiration ? remainingTerm(today, expiration) : null
   if (!term) return expiration ? t('reports.ended') : '—'
   return term.years > 0 ? t('reports.termYM', term) : t('reports.termM', term)
+}
+
+/** Rent for today: the rent schedule's current period when the lease has one, else the base monthly rent. */
+export function currentMonthlyRent(lease: Lease, today: string): number | null {
+  if (hasRentSchedule(lease.rent_schedule)) {
+    const period = currentPeriod(lease.rent_schedule, today)
+    const amount = period ? monthlyOf(period) : null
+    if (amount !== null) return amount
+  }
+  return lease.monthly_rent
+}
+
+/**
+ * Lease state used by the Dashboard charts: like leasePhase, but active leases ending within
+ * 12 months are split out as "expiring".
+ */
+export type DashboardState = 'active' | 'expiring' | 'upcoming' | 'expired' | 'undated'
+
+export function dashboardState(lease: Lease, today: string): DashboardState {
+  const phase = leasePhase(lease, today)
+  if (phase === 'active' && isExpiringWithin(lease, today, 12)) return 'expiring'
+  return phase
+}
+
+export interface YearBucket {
+  /** YYYY */
+  key: string
+  /** YYYY-01-01, so year buckets can share the month chart */
+  start: string
+  leases: Lease[]
+}
+
+/** Analyzed leases by year of expiration, from `back` years ago to `ahead` years ahead (inclusive). */
+export function expirationsByYear(leases: Lease[], today: string, back = 2, ahead = 5): YearBucket[] {
+  const year = Number(today.slice(0, 4))
+  const buckets: YearBucket[] = []
+  for (let y = year - back; y <= year + ahead; y++) buckets.push({ key: String(y), start: `${y}-01-01`, leases: [] })
+  const index = new Map(buckets.map((b) => [b.key, b]))
+  for (const lease of analyzed(leases)) {
+    if (lease.expiration_date) index.get(lease.expiration_date.slice(0, 4))?.leases.push(lease)
+  }
+  return buckets
+}
+
+/** Average whole months left on the given leases (those with an expiration date), or null. */
+export function averageRemainingMonths(leases: Lease[], today: string): number | null {
+  const months = leases
+    .map((l) => (l.expiration_date ? remainingTerm(today, l.expiration_date) : null))
+    .filter((r): r is { years: number; months: number } => r !== null)
+    .map((r) => r.years * 12 + r.months)
+  return months.length ? Math.round(months.reduce((a, b) => a + b, 0) / months.length) : null
 }

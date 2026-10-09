@@ -25,7 +25,10 @@ function ticks(max: number): number[] {
 
 const leaseName = (l: MonthBucket['leases'][number]) => l.tenant ?? l.file_name
 
-export function ExpirationChart({ buckets }: { buckets: MonthBucket[] }) {
+/** mode 'month': buckets are months (labels like Oct, with the year on January); 'year': buckets are years. */
+export function ExpirationChart({ buckets, mode = 'month' }: { buckets: MonthBucket[]; mode?: 'month' | 'year' }) {
+  const short = (b: MonthBucket) => (mode === 'year' ? b.key : formatMonth(b.start))
+  const long = (b: MonthBucket) => (mode === 'year' ? b.key : formatMonth(b.start, 'long'))
   const wrap = useRef<HTMLDivElement>(null)
   const width = useElementWidth(wrap)
   const [active, setActive] = useState<number | null>(null)
@@ -56,7 +59,7 @@ export function ExpirationChart({ buckets }: { buckets: MonthBucket[] }) {
           const cx = MARGIN.left + band * i + band / 2
           const count = b.leases.length
           const month = Number(b.start.slice(5, 7))
-          const showYear = i === 0 || month === 1
+          const showYear = mode === 'month' && (i === 0 || month === 1)
           return (
             <g key={b.key} className={active === i ? 'bar-group active' : 'bar-group'}>
               {count > 0 && (
@@ -68,7 +71,7 @@ export function ExpirationChart({ buckets }: { buckets: MonthBucket[] }) {
                 </>
               )}
               <text className="chart-tick" x={cx} y={HEIGHT - MARGIN.bottom + 16} textAnchor="middle">
-                {formatMonth(b.start)}
+                {short(b)}
               </text>
               {showYear && (
                 <text className="chart-tick chart-year" x={cx} y={HEIGHT - MARGIN.bottom + 30} textAnchor="middle">
@@ -83,7 +86,7 @@ export function ExpirationChart({ buckets }: { buckets: MonthBucket[] }) {
                 width={band}
                 height={plotH}
                 tabIndex={0}
-                aria-label={`${formatMonth(b.start, 'long')}: ${count === 1 ? t('dashboard.chartTooltipOne') : t('dashboard.chartTooltip', { count })}`}
+                aria-label={`${long(b)}: ${count === 1 ? t('dashboard.chartTooltipOne') : t('dashboard.chartTooltip', { count })}`}
                 onPointerEnter={() => setActive(i)}
                 onPointerLeave={() => setActive(null)}
                 onFocus={() => setActive(i)}
@@ -110,7 +113,7 @@ export function ExpirationChart({ buckets }: { buckets: MonthBucket[] }) {
               ? t('dashboard.chartTooltipOne')
               : t('dashboard.chartTooltip', { count: hovered.leases.length })}
           </strong>
-          <span className="muted">{formatMonth(hovered.start, 'long')}</span>
+          <span className="muted">{long(hovered)}</span>
           {hovered.leases.slice(0, TOOLTIP_NAMES).map((l) => (
             <span key={l.id} className="chart-tooltip-name">
               {leaseName(l)}
@@ -135,7 +138,7 @@ export function ExpirationChart({ buckets }: { buckets: MonthBucket[] }) {
           <tbody>
             {buckets.map((b) => (
               <tr key={b.key}>
-                <td>{formatMonth(b.start, 'long')}</td>
+                <td>{long(b)}</td>
                 <td className="num">{b.leases.length}</td>
                 <td>{b.leases.map(leaseName).join(', ') || '—'}</td>
               </tr>
