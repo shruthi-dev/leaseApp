@@ -212,7 +212,8 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--primary); outli
 }
 .menu-item:hover:not(:disabled) { background: var(--surface-muted); }
 
-.content { flex: 1; min-width: 0; max-width: 1400px; padding: 1.75rem 2rem 3rem; }
+/* Capped for readability on very wide screens, and centered so the spare space is split evenly. */
+.content { flex: 1; min-width: 0; max-width: 1600px; margin-inline: auto; padding: 1.75rem 2rem 3rem; }
 
 /* Narrow screens: the sidebar becomes an overlay drawer. Keep in sync with DRAWER_QUERY in AppLayout. */
 @media (max-width: 860px) {
