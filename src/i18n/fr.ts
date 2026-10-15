@@ -40,6 +40,9 @@ export const fr: Messages = {
     microsoft: "Continuer avec Microsoft",
     or: "ou",
     microsoftFailed: "La connexion Microsoft a échoué : {message}",
+    subtitle: "Bon retour. Connectez-vous à votre portefeuille de baux.",
+    microsoftHint: "Utilisez votre compte Microsoft professionnel",
+    orEmail: "ou continuer avec un e-mail",
   },
   signup: {
     title: 'Créer un compte',
@@ -47,6 +50,7 @@ export const fr: Messages = {
     haveAccount: 'Vous avez déjà un compte ?',
     logInLink: 'Se connecter',
     checkEmail: 'Consultez vos e-mails pour confirmer votre compte, puis connectez-vous.',
+    subtitle: "Commencez à analyser vos baux en quelques minutes.",
   },
   forgot: {
     title: 'Réinitialiser le mot de passe',
@@ -482,5 +486,15 @@ export const fr: Messages = {
     name: "Organisation",
     rename: "Renommer",
     save: "Enregistrer",
+  },
+  auth: {
+    headline: "L’abstraction de baux en quelques minutes",
+    tagline: "Importez un bail en PDF et obtenez les conditions clés, les clauses et l’échéancier des loyers, chacun relié à sa page.",
+    feature1: "Conditions, clauses et paliers de loyer extraits automatiquement",
+    feature2: "Chaque valeur renvoie à sa page dans le PDF",
+    feature3: "Tableau de bord, état locatif et rapports d’échéances",
+    poweredBy: "Connexion sécurisée · Vos documents restent privés",
+    showPassword: "Afficher le mot de passe",
+    hidePassword: "Masquer le mot de passe",
   },
 }

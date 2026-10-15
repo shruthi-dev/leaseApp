@@ -38,9 +38,10 @@ export function MicrosoftSignIn() {
         <MicrosoftLogo />
         {busy ? t('common.loading') : t('login.microsoft')}
       </button>
+      <p className="sso-hint">{t('login.microsoftHint')}</p>
       <Alert kind="error" message={error} />
       <div className="sso-divider" role="separator">
-        <span>{t('login.or')}</span>
+        <span>{t('login.orEmail')}</span>
       </div>
     </div>
   )

@@ -5,6 +5,7 @@ import { MIN_PASSWORD_LENGTH } from '../lib/auth'
 import { AuthCard } from '../components/AuthCard'
 import { Alert } from '../components/Alert'
 import { MicrosoftSignIn } from '../components/MicrosoftSignIn'
+import { PasswordInput } from '../components/PasswordInput'
 import { t } from '../i18n'
 
 export function SignupPage() {
@@ -42,6 +43,7 @@ export function SignupPage() {
   return (
     <AuthCard
       title={t('signup.title')}
+      subtitle={t('signup.subtitle')}
       footer={
         <>
           {t('signup.haveAccount')} <Link to="/login">{t('signup.logInLink')}</Link>
@@ -56,8 +58,7 @@ export function SignupPage() {
         </label>
         <label>
           {t('common.password')}
-          <input
-            type="password"
+          <PasswordInput
             autoComplete="new-password"
             required
             value={password}
@@ -66,8 +67,7 @@ export function SignupPage() {
         </label>
         <label>
           {t('common.confirmPassword')}
-          <input
-            type="password"
+          <PasswordInput
             autoComplete="new-password"
             required
             value={confirm}

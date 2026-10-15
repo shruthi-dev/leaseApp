@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { MIN_PASSWORD_LENGTH, useAuth } from '../lib/auth'
 import { AuthCard } from '../components/AuthCard'
+import { PasswordInput } from '../components/PasswordInput'
 import { Alert } from '../components/Alert'
 import { t } from '../i18n'
 
@@ -51,8 +52,7 @@ export function ResetPasswordPage() {
       <form onSubmit={onSubmit} className="form">
         <label>
           {t('reset.newPassword')}
-          <input
-            type="password"
+          <PasswordInput
             autoComplete="new-password"
             required
             value={password}
@@ -61,8 +61,7 @@ export function ResetPasswordPage() {
         </label>
         <label>
           {t('common.confirmPassword')}
-          <input
-            type="password"
+          <PasswordInput
             autoComplete="new-password"
             required
             value={confirm}

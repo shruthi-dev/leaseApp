@@ -24,12 +24,11 @@ export function ForgotPasswordPage() {
   }
 
   return (
-    <AuthCard title={t('forgot.title')} footer={<Link to="/login">{t('forgot.back')}</Link>}>
+    <AuthCard title={t('forgot.title')} subtitle={sent ? undefined : t('forgot.intro')} footer={<Link to="/login">{t('forgot.back')}</Link>}>
       {sent ? (
         <Alert kind="success" message={t('forgot.sent')} />
       ) : (
         <form onSubmit={onSubmit} className="form">
-          <p className="muted">{t('forgot.intro')}</p>
           <label>
             {t('common.email')}
             <input type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} />

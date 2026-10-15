@@ -38,6 +38,9 @@ export const en = {
     microsoft: "Continue with Microsoft",
     or: "or",
     microsoftFailed: "Microsoft sign-in failed: {message}",
+    subtitle: "Welcome back. Sign in to your lease portfolio.",
+    microsoftHint: "Use your work Microsoft account",
+    orEmail: "or continue with email",
   },
   signup: {
     title: 'Create account',
@@ -45,6 +48,7 @@ export const en = {
     haveAccount: 'Already have an account?',
     logInLink: 'Log in',
     checkEmail: 'Check your email to confirm your account, then log in.',
+    subtitle: "Start abstracting leases in a few minutes.",
   },
   forgot: {
     title: 'Reset your password',
@@ -479,6 +483,16 @@ export const en = {
     name: "Organization",
     rename: "Rename",
     save: "Save",
+  },
+  auth: {
+    headline: "Lease abstraction, done in minutes",
+    tagline: "Upload a lease PDF and get the key terms, clauses and rent schedule, each linked to the page it came from.",
+    feature1: "Key terms, clauses and rent steps extracted automatically",
+    feature2: "Every value traced back to its page in the PDF",
+    feature3: "Portfolio dashboard, rent roll and expiry reports",
+    poweredBy: "Secure sign-in · Your documents stay private",
+    showPassword: "Show password",
+    hidePassword: "Hide password",
   },
 }
 

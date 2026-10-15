@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase'
 import { AuthCard } from '../components/AuthCard'
 import { Alert } from '../components/Alert'
 import { MicrosoftSignIn } from '../components/MicrosoftSignIn'
+import { PasswordInput } from '../components/PasswordInput'
 import { t } from '../i18n'
 
 export function LoginPage() {
@@ -25,6 +26,7 @@ export function LoginPage() {
   return (
     <AuthCard
       title={t('login.title')}
+      subtitle={t('login.subtitle')}
       footer={
         <>
           {t('login.noAccount')} <Link to="/signup">{t('login.signUpLink')}</Link>
@@ -37,23 +39,25 @@ export function LoginPage() {
           {t('common.email')}
           <input type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
         </label>
-        <label>
-          {t('common.password')}
-          <input
-            type="password"
+        <div className="field">
+          <div className="field-label-row">
+            <label htmlFor="login-password">{t('common.password')}</label>
+            <Link to="/forgot-password" className="small">
+              {t('login.forgot')}
+            </Link>
+          </div>
+          <PasswordInput
+            id="login-password"
             autoComplete="current-password"
             required
             value={password}
             onChange={(e) => setPassword(e.target.value)}
           />
-        </label>
+        </div>
         <Alert kind="error" message={error} />
         <button type="submit" disabled={busy}>
           {busy ? t('common.loading') : t('login.submit')}
         </button>
-        <Link to="/forgot-password" className="small">
-          {t('login.forgot')}
-        </Link>
       </form>
     </AuthCard>
   )

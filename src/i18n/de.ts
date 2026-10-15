@@ -40,6 +40,9 @@ export const de: Messages = {
     microsoft: "Weiter mit Microsoft",
     or: "oder",
     microsoftFailed: "Anmeldung mit Microsoft fehlgeschlagen: {message}",
+    subtitle: "Willkommen zurück. Melden Sie sich bei Ihrem Portfolio an.",
+    microsoftHint: "Mit Ihrem Microsoft-Arbeitskonto",
+    orEmail: "oder mit E-Mail fortfahren",
   },
   signup: {
     title: 'Konto erstellen',
@@ -47,6 +50,7 @@ export const de: Messages = {
     haveAccount: 'Sie haben bereits ein Konto?',
     logInLink: 'Anmelden',
     checkEmail: 'Bestätigen Sie Ihr Konto über den Link in Ihrer E-Mail und melden Sie sich dann an.',
+    subtitle: "Analysieren Sie Mietverträge in wenigen Minuten.",
   },
   forgot: {
     title: 'Passwort zurücksetzen',
@@ -482,5 +486,15 @@ export const de: Messages = {
     name: "Organisation",
     rename: "Umbenennen",
     save: "Speichern",
+  },
+  auth: {
+    headline: "Mietvertragsanalyse in Minuten",
+    tagline: "Laden Sie einen Mietvertrag als PDF hoch und erhalten Sie Eckdaten, Klauseln und Mietstaffel, jeweils mit der Fundstelle.",
+    feature1: "Eckdaten, Klauseln und Mietstaffeln automatisch extrahiert",
+    feature2: "Jeder Wert mit seiner Seite im PDF verknüpft",
+    feature3: "Portfolio-Dashboard, Mieterliste und Ablaufberichte",
+    poweredBy: "Sichere Anmeldung · Ihre Dokumente bleiben privat",
+    showPassword: "Passwort anzeigen",
+    hidePassword: "Passwort verbergen",
   },
 }

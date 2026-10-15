@@ -40,6 +40,9 @@ export const es: Messages = {
     microsoft: "Continuar con Microsoft",
     or: "o",
     microsoftFailed: "Error al iniciar sesión con Microsoft: {message}",
+    subtitle: "Bienvenido de nuevo. Accede a tu cartera de contratos.",
+    microsoftHint: "Usa tu cuenta Microsoft del trabajo",
+    orEmail: "o continúa con correo",
   },
   signup: {
     title: 'Crear cuenta',
@@ -47,6 +50,7 @@ export const es: Messages = {
     haveAccount: '¿Ya tienes una cuenta?',
     logInLink: 'Iniciar sesión',
     checkEmail: 'Revisa tu correo para confirmar la cuenta y luego inicia sesión.',
+    subtitle: "Empieza a analizar contratos en pocos minutos.",
   },
   forgot: {
     title: 'Restablecer contraseña',
@@ -481,5 +485,15 @@ export const es: Messages = {
     name: "Organización",
     rename: "Cambiar nombre",
     save: "Guardar",
+  },
+  auth: {
+    headline: "Abstracción de contratos en minutos",
+    tagline: "Sube un contrato en PDF y obtén los términos clave, las cláusulas y el calendario de rentas, cada uno vinculado a su página.",
+    feature1: "Términos, cláusulas y escalados de renta extraídos automáticamente",
+    feature2: "Cada dato enlazado a su página en el PDF",
+    feature3: "Panel de cartera, rent roll e informes de vencimientos",
+    poweredBy: "Acceso seguro · Tus documentos son privados",
+    showPassword: "Mostrar contraseña",
+    hidePassword: "Ocultar contraseña",
   },
 }
