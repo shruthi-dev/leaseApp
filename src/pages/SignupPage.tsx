@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase'
 import { MIN_PASSWORD_LENGTH } from '../lib/auth'
 import { AuthCard } from '../components/AuthCard'
 import { Alert } from '../components/Alert'
+import { MicrosoftSignIn } from '../components/MicrosoftSignIn'
 import { t } from '../i18n'
 
 export function SignupPage() {
@@ -47,6 +48,7 @@ export function SignupPage() {
         </>
       }
     >
+      <MicrosoftSignIn />
       <form onSubmit={onSubmit} className="form">
         <label>
           {t('common.email')}

@@ -99,6 +99,24 @@ Email confirmation is off locally, so signing up logs you in right away.
 - **Auth URLs:** set the Site URL and redirect URLs (including `<your-frontend>/reset-password`) under
   Authentication → URL Configuration.
 
+## Microsoft sign-in
+
+"Continue with Microsoft" (on the login and sign-up pages) uses Supabase's Azure (Microsoft Entra ID)
+provider. Until the provider is enabled, clicking it shows "provider is not enabled".
+
+1. **Azure portal → Microsoft Entra ID → App registrations → New registration.**
+   - Supported account types: *this organizational directory only* (single tenant) to allow only your company's
+     Microsoft accounts, or *any organizational directory and personal Microsoft accounts* for everyone.
+   - Redirect URI (Web): `https://<project-ref>.supabase.co/auth/v1/callback`
+2. **Certificates & secrets → New client secret.** Copy the secret's *Value* (shown once).
+3. **Supabase dashboard → Authentication → Sign In / Providers → Azure.** Enable it and paste the Application
+   (client) ID and the secret value. For single tenant, set the Azure Tenant URL to
+   `https://login.microsoftonline.com/<directory-tenant-id>`.
+4. **Authentication → URL Configuration:** the redirect URLs must include `<your-frontend>/**`.
+
+A Microsoft account whose verified email matches an existing account signs in to that account; otherwise a new
+account is created (as an organization member).
+
 ## Adding a language
 
 All UI text lives in [src/i18n/en.ts](src/i18n/en.ts) and is read through `t('section.key')`.

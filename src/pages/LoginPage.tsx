@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { AuthCard } from '../components/AuthCard'
 import { Alert } from '../components/Alert'
+import { MicrosoftSignIn } from '../components/MicrosoftSignIn'
 import { t } from '../i18n'
 
 export function LoginPage() {
@@ -30,6 +31,7 @@ export function LoginPage() {
         </>
       }
     >
+      <MicrosoftSignIn />
       <form onSubmit={onSubmit} className="form">
         <label>
           {t('common.email')}

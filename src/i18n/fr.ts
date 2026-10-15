@@ -37,6 +37,9 @@ export const fr: Messages = {
     forgot: 'Mot de passe oublié ?',
     noAccount: 'Pas encore de compte ?',
     signUpLink: 'Créer un compte',
+    microsoft: "Continuer avec Microsoft",
+    or: "ou",
+    microsoftFailed: "La connexion Microsoft a échoué : {message}",
   },
   signup: {
     title: 'Créer un compte',

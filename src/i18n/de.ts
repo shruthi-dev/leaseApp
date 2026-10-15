@@ -37,6 +37,9 @@ export const de: Messages = {
     forgot: 'Passwort vergessen?',
     noAccount: 'Noch kein Konto?',
     signUpLink: 'Registrieren',
+    microsoft: "Weiter mit Microsoft",
+    or: "oder",
+    microsoftFailed: "Anmeldung mit Microsoft fehlgeschlagen: {message}",
   },
   signup: {
     title: 'Konto erstellen',

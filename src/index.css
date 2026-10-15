@@ -821,3 +821,9 @@ a.page-ref:hover { background: var(--primary); color: #fff; }
   max-width: 28ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 @media (max-width: 560px) { .org-badge { display: none; } }
+
+/* "Continue with Microsoft" on the login and sign-up pages */
+.sso { display: flex; flex-direction: column; gap: 0.75rem; margin-bottom: 0.875rem; }
+.sso-button { display: inline-flex; align-items: center; justify-content: center; gap: 0.6rem; width: 100%; padding: 0.6rem 1rem; font-weight: 600; }
+.sso-divider { display: flex; align-items: center; gap: 0.75rem; color: var(--muted); font-size: 0.8125rem; }
+.sso-divider::before, .sso-divider::after { content: ''; flex: 1; border-top: 1px solid var(--border); }

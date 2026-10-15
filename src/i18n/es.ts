@@ -37,6 +37,9 @@ export const es: Messages = {
     forgot: '¿Olvidaste tu contraseña?',
     noAccount: '¿Aún no tienes cuenta?',
     signUpLink: 'Regístrate',
+    microsoft: "Continuar con Microsoft",
+    or: "o",
+    microsoftFailed: "Error al iniciar sesión con Microsoft: {message}",
   },
   signup: {
     title: 'Crear cuenta',

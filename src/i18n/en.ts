@@ -35,6 +35,9 @@ export const en = {
     forgot: 'Forgot password?',
     noAccount: 'No account yet?',
     signUpLink: 'Sign up',
+    microsoft: "Continue with Microsoft",
+    or: "or",
+    microsoftFailed: "Microsoft sign-in failed: {message}",
   },
   signup: {
     title: 'Create account',
