@@ -343,8 +343,9 @@ enabled = true
 client_id = "env(SUPABASE_AUTH_EXTERNAL_AZURE_CLIENT_ID)"
 # DO NOT commit the secret; it is read from the environment.
 secret = "env(SUPABASE_AUTH_EXTERNAL_AZURE_SECRET)"
-# Azure only accepts http redirect URIs on localhost, so use localhost (not 127.0.0.1) locally.
-redirect_uri = "http://localhost:54321/auth/v1/callback"
+# Local only (set in supabase/.env): Azure accepts http redirect URIs only on localhost, so the
+# local callback is http://localhost:54321/auth/v1/callback. Empty = the default callback URL.
+redirect_uri = "env(SUPABASE_AUTH_EXTERNAL_AZURE_REDIRECT_URI)"
 # Single-tenant (only your organization's Microsoft accounts): https://login.microsoftonline.com/<tenant-id>
 url = "https://login.microsoftonline.com/e7948740-eeeb-4147-8d0e-30542138b3cd"
 skip_nonce_check = false
