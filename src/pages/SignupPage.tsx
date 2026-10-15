@@ -23,7 +23,13 @@ export function SignupPage() {
     if (password !== confirm) return setError(t('common.passwordsDontMatch'))
 
     setBusy(true)
-    const { data, error } = await supabase.auth.signUp({ email, password })
+    // Send the confirmation link back to whichever site the user signed up on (local or live).
+    // The URL must also be allow-listed under Authentication → URL Configuration in Supabase.
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: { emailRedirectTo: window.location.origin },
+    })
     setBusy(false)
     if (error) return setError(error.message)
 

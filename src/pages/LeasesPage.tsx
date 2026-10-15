@@ -7,6 +7,7 @@ import { SearchIcon } from '../components/Icons'
 import {
   deleteLease,
   extractMissingDetails,
+  isShared,
   MAX_FILE_BYTES,
   missingParts,
   retryLease,
@@ -26,6 +27,8 @@ export function LeasesPage() {
   const [busyIds, setBusyIds] = useState<Set<string>>(new Set())
   const [messages, setMessages] = useState<string[]>([])
   const [query, setQuery] = useState('')
+  const [owner, setOwner] = useState<'all' | 'mine' | 'shared'>('all')
+  const hasShared = leases.some(isShared)
   const [toDelete, setToDelete] = useState<Lease | null>(null)
   const [deleting, setDeleting] = useState(false)
   const [bulk, setBulk] = useState<{ done: number; total: number; failed: number } | null>(null)
@@ -55,11 +58,13 @@ export function LeasesPage() {
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
-    if (!q) return leases
-    return leases.filter((l) =>
+    const byOwner =
+      !hasShared || owner === 'all' ? leases : leases.filter((l) => isShared(l) === (owner === 'shared'))
+    if (!q) return byOwner
+    return byOwner.filter((l) =>
       [l.file_name, l.tenant, l.landlord, l.premises_address, l.premises].some((v) => v?.toLowerCase().includes(q)),
     )
-  }, [leases, query])
+  }, [leases, query, owner, hasShared])
 
   const onProgress = (leaseId: string, p: Progress) => {
     setProgress((prev) => ({ ...prev, [leaseId]: p }))
@@ -179,6 +184,15 @@ export function LeasesPage() {
           <span className="muted small">
             {leases.length === 1 ? t('leases.countOne') : t('leases.count', { count: leases.length })}
           </span>
+          {hasShared && (
+            <div className="segmented" role="group" aria-label={t('sharing.ownerFilter')}>
+              {(['all', 'mine', 'shared'] as const).map((o) => (
+                <button key={o} aria-pressed={owner === o} className={owner === o ? 'on' : undefined} onClick={() => setOwner(o)}>
+                  {t(`sharing.filter.${o}`)}
+                </button>
+              ))}
+            </div>
+          )}
           <label className="search">
             <SearchIcon />
             <input

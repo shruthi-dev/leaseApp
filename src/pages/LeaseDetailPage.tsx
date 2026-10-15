@@ -5,6 +5,7 @@ import {
   analyzeLease,
   extractMissingDetails,
   lastRunFailed,
+  isShared,
   missingParts,
   canRetry,
   deleteLease,
@@ -80,6 +81,8 @@ export function LeaseDetailPage() {
   // A lease with results keeps showing them while it is re-analyzed or after a failed re-run.
   const analyzed = !!lease.analyzed_at
   const missing = missingParts(lease)
+  // Shared with the user by someone else: view only.
+  const readOnly = isShared(lease)
   // Current terms = original lease terms with completed amendments applied.
   const current = applyAmendments(lease)
 
@@ -172,10 +175,15 @@ export function LeaseDetailPage() {
           <div className="detail-meta">
             <StatusBadge lease={current} />
             <span className="muted small ellipsis">{lease.file_name}</span>
+            {readOnly && (
+              <span className="shared-tag" title={t('sharing.viewOnlyHint')}>
+                {t('sharing.sharedBy', { email: lease.owner_email! })}
+              </span>
+            )}
           </div>
         </div>
         <div className="detail-actions">
-          {analyzed && !editing && (
+          {analyzed && !editing && !readOnly && (
             <button
               className="button-secondary with-icon"
               onClick={() => {
@@ -192,28 +200,30 @@ export function LeaseDetailPage() {
               {t('detail.openPdf')}
             </a>
           )}
-          {analyzed && !editing && (
+          {analyzed && !editing && !readOnly && (
             <button className="button-secondary" onClick={() => { setEditing(true); setNotice(null) }}>
               {t('detail.edit')}
             </button>
           )}
-          {analyzed && !editing && (
+          {analyzed && !editing && !readOnly && (
             <button className="button-secondary" onClick={() => setConfirmReanalyze(true)} disabled={retrying}>
               {t('detail.reanalyze')}
             </button>
           )}
-          {canRetry(lease) && (
+          {canRetry(lease) && !readOnly && (
             <button className="button-secondary" onClick={retry} disabled={retrying}>
               {retrying ? t('common.loading') : t('common.retry')}
             </button>
           )}
-          <button
-            className="button-secondary danger-text"
-            onClick={() => setConfirmDelete(true)}
-            disabled={retrying || (isInProgress(lease) && !canRetry(lease))}
-          >
-            {t('common.delete')}
-          </button>
+          {!readOnly && (
+            <button
+              className="button-secondary danger-text"
+              onClick={() => setConfirmDelete(true)}
+              disabled={retrying || (isInProgress(lease) && !canRetry(lease))}
+            >
+              {t('common.delete')}
+            </button>
+          )}
         </div>
       </header>
 
@@ -272,7 +282,7 @@ export function LeaseDetailPage() {
                 <LeaseTermsForm lease={lease} saving={saving} onSave={save} onCancel={() => setEditing(false)} />
               </div>
             ) : tab === 'amendments' ? (
-              <AmendmentsCard lease={lease} onChanged={refresh} pickRequest={pickRequest} />
+              <AmendmentsCard lease={lease} onChanged={refresh} pickRequest={pickRequest} readOnly={readOnly} />
             ) : tab === 'clauses' ? (
               <ClausesCard
                 lease={lease}

@@ -1,6 +1,8 @@
-// Lease data access. Everything goes straight to Supabase; RLS limits each user to their own rows.
+// Lease data access. Everything goes straight to Supabase; RLS limits each user to their own rows
+// and the portfolios others have shared with them (read-only).
 
 import { supabase } from './supabase'
+import { sharedOwners } from './sharing'
 import {
   analyzeDocument,
   getFileUrl,
@@ -73,24 +75,40 @@ export interface Lease extends ProcessedDoc {
   amendments?: Amendment[]
   /** Set by applyAmendments: which current values come from an amendment. */
   amended?: AmendedFields
+  /** Set when someone else shared this lease with the current user (their email); read-only then. */
+  owner_email?: string
 }
 
 /** Lease row plus its amendments in one request (via the lease_amendments foreign key). */
 const SELECT_WITH_AMENDMENTS = '*, amendments:lease_amendments(*)'
 
+/** Own leases plus any shared with the user (RLS returns both); shared ones get owner_email. */
 export async function listLeases(): Promise<Lease[]> {
-  const { data, error } = await supabase
-    .from('leases')
-    .select(SELECT_WITH_AMENDMENTS)
-    .order('created_at', { ascending: false })
+  const [{ data, error }, owners] = await Promise.all([
+    supabase.from('leases').select(SELECT_WITH_AMENDMENTS).order('created_at', { ascending: false }),
+    sharedOwners(),
+  ])
   if (error) throw error
-  return data as Lease[]
+  return (data as Lease[]).map((l) => withOwner(l, owners))
 }
 
 export async function getLease(id: string): Promise<Lease | null> {
-  const { data, error } = await supabase.from('leases').select(SELECT_WITH_AMENDMENTS).eq('id', id).maybeSingle()
+  const [{ data, error }, owners] = await Promise.all([
+    supabase.from('leases').select(SELECT_WITH_AMENDMENTS).eq('id', id).maybeSingle(),
+    sharedOwners(),
+  ])
   if (error) throw error
-  return data as Lease | null
+  return data ? withOwner(data as Lease, owners) : null
+}
+
+function withOwner(lease: Lease, owners: Map<string, string>): Lease {
+  const email = owners.get(lease.user_id)
+  return email ? { ...lease, owner_email: email } : lease
+}
+
+/** True for a lease someone else shared with the user: it can be viewed but not changed. */
+export function isShared(lease: Pick<Lease, 'owner_email'>): boolean {
+  return !!lease.owner_email
 }
 
 /** The fields a user can correct on the overview page (always the original lease terms). */
@@ -158,7 +176,7 @@ export function analyzeLease(leaseId: string): Promise<void> {
 /** Parts an analyzed lease has not had extracted yet (it was analyzed before they existed). */
 export type DetailPart = 'clauses' | 'rent_schedule'
 export function missingParts(lease: Lease): DetailPart[] {
-  if (!lease.analyzed_at) return []
+  if (!lease.analyzed_at || isShared(lease)) return []
   const done = lease.extracted_parts ?? []
   return (['clauses', 'rent_schedule'] as const).filter((p) => !done.includes(p))
 }

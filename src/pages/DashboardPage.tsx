@@ -8,7 +8,7 @@ import { TopRentChart } from '../components/TopRentChart'
 import { ProcessingBadge, StatusBadge } from '../components/StatusBadge'
 import { Alert } from '../components/Alert'
 import { useLeases } from '../lib/useLeases'
-import { isStalled, lastRunFailed, leaseTitle, missingParts, type Lease } from '../lib/leases'
+import { isShared, isStalled, lastRunFailed, leaseTitle, missingParts, type Lease } from '../lib/leases'
 import { amendmentTitle } from '../lib/amendments'
 import {
   addMonths,
@@ -208,7 +208,8 @@ export function DashboardPage() {
               <RecentActivity leases={leases} />
             </Panel>
             <Panel title={t('dashboard.attentionTitle')}>
-              <NeedsAttention leases={leases} />
+              {/* Only the user's own leases: shared ones can't be fixed from here. */}
+              <NeedsAttention leases={leases.filter((l) => !isShared(l))} />
             </Panel>
           </div>
         </>

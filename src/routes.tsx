@@ -9,6 +9,7 @@ import { LeasesPage } from './pages/LeasesPage'
 import { LeaseDetailPage } from './pages/LeaseDetailPage'
 import { DashboardPage } from './pages/DashboardPage'
 import { ReportsPage } from './pages/ReportsPage'
+import { SettingsPage } from './pages/SettingsPage'
 import { NotFoundPage } from './pages/NotFoundPage'
 
 // Add new pages here (and to NAV_ITEMS in AppLayout). Anything under ProtectedRoute requires a session.
@@ -34,6 +35,7 @@ export const router = createBrowserRouter([
           { path: '/leases/:id', element: <LeaseDetailPage /> },
           { path: '/dashboard', element: <DashboardPage /> },
           { path: '/reports', element: <ReportsPage /> },
+          { path: '/settings', element: <SettingsPage /> },
         ],
       },
     ],

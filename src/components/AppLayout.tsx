@@ -4,6 +4,7 @@ import { LogoMark, MenuIcon } from './Icons'
 import { Sidebar } from './Sidebar'
 import { UserMenu } from './UserMenu'
 import { LanguageSwitcher } from './LanguageSwitcher'
+import { useOrganizationName } from '../lib/organization'
 import { t } from '../i18n'
 
 const COLLAPSED_KEY = 'sidebar-collapsed'
@@ -20,6 +21,7 @@ export function AppLayout() {
   const [collapsed, setCollapsed] = useState(readCollapsed)
   const [drawerOpen, setDrawerOpen] = useState(false)
   const location = useLocation()
+  const orgName = useOrganizationName()
 
   useEffect(() => {
     try {
@@ -57,6 +59,11 @@ export function AppLayout() {
           </span>
           <span>{t('appName')}</span>
         </NavLink>
+        {orgName && (
+          <span className="org-badge" title={t('org.name')}>
+            {orgName}
+          </span>
+        )}
         <div className="topbar-right">
           <LanguageSwitcher />
           <UserMenu />

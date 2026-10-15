@@ -1,5 +1,5 @@
 import { Link, useNavigate } from 'react-router-dom'
-import { canRetry, isInProgress, lastRunFailed, leaseTitle, type Lease, type LeaseField, type Progress } from '../lib/leases'
+import { canRetry, isInProgress, isShared, lastRunFailed, leaseTitle, type Lease, type LeaseField, type Progress } from '../lib/leases'
 import { formatDate, formatMoney } from '../lib/format'
 import { leaseErrorText } from '../lib/leaseErrors'
 import { StatusBadge } from './StatusBadge'
@@ -76,6 +76,11 @@ export function LeaseTable({ leases, progress, busyIds, onRetry, onDelete }: Pro
                         </span>
                       )}
                       <FileTypeTag type={lease.pdf_type} />
+                      {isShared(lease) && (
+                        <span className="shared-tag" title={t('sharing.sharedBy', { email: lease.owner_email! })}>
+                          {t('sharing.sharedTag')}
+                        </span>
+                      )}
                       {lastRunFailed(lease) && (
                         <span className="file-type mixed" title={leaseErrorText(lease.error_code, lease.error_message)}>
                           {t('leases.rerunFailedTag')}
@@ -121,7 +126,7 @@ export function LeaseTable({ leases, progress, busyIds, onRetry, onDelete }: Pro
               </td>
               <td className="col-actions">
                 <div className="row-actions">
-                  {canRetry(lease) && (
+                  {canRetry(lease) && !isShared(lease) && (
                     <button
                       className="icon-button"
                       title={t('common.retry')}
@@ -133,15 +138,17 @@ export function LeaseTable({ leases, progress, busyIds, onRetry, onDelete }: Pro
                     </button>
                   )}
                   <ProcessingInfo doc={lease} label={leaseTitle(lease)} />
-                  <button
-                    className="icon-button danger"
-                    title={t('common.delete')}
-                    aria-label={`${t('common.delete')}: ${leaseTitle(lease)}`}
-                    disabled={busy || (isInProgress(lease) && !canRetry(lease))}
-                    onClick={() => onDelete(lease)}
-                  >
-                    <TrashIcon />
-                  </button>
+                  {!isShared(lease) && (
+                    <button
+                      className="icon-button danger"
+                      title={t('common.delete')}
+                      aria-label={`${t('common.delete')}: ${leaseTitle(lease)}`}
+                      disabled={busy || (isInProgress(lease) && !canRetry(lease))}
+                      onClick={() => onDelete(lease)}
+                    >
+                      <TrashIcon />
+                    </button>
+                  )}
                 </div>
               </td>
             </tr>

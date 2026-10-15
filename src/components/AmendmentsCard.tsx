@@ -50,11 +50,14 @@ export function AmendmentsCard({
   lease,
   onChanged,
   pickRequest = 0,
+  readOnly = false,
 }: {
   lease: Lease
   onChanged: () => void
   /** Incremented by the page's Upload amendment button to open the file picker. */
   pickRequest?: number
+  /** Shared lease: view and open PDFs only. */
+  readOnly?: boolean
 }) {
   const input = useRef<HTMLInputElement>(null)
   useEffect(() => {
@@ -148,10 +151,12 @@ export function AmendmentsCard({
           <h2>{t('amendments.title')}</h2>
           <p className="muted small">{t('amendments.hint')}</p>
         </div>
-        <button className="button-secondary with-icon" onClick={() => input.current?.click()}>
-          <UploadIcon />
-          {t('amendments.upload')}
-        </button>
+        {!readOnly && (
+          <button className="button-secondary with-icon" onClick={() => input.current?.click()}>
+            <UploadIcon />
+            {t('amendments.upload')}
+          </button>
+        )}
         <input
           ref={input}
           type="file"
@@ -197,7 +202,7 @@ export function AmendmentsCard({
                         <FileIcon />
                       </button>
                     )}
-                    {canRetry(a) && (
+                    {!readOnly && canRetry(a) && (
                       <button
                         className="icon-button"
                         title={t('common.retry')}
@@ -208,15 +213,17 @@ export function AmendmentsCard({
                         <RetryIcon />
                       </button>
                     )}
-                    <button
-                      className="icon-button danger"
-                      title={t('common.delete')}
-                      aria-label={`${t('common.delete')}: ${amendmentTitle(a)}`}
-                      disabled={busy.has(a.id) || !!p || (isInProgress(a) && !canRetry(a))}
-                      onClick={() => setToDelete(a)}
-                    >
-                      <TrashIcon />
-                    </button>
+                    {!readOnly && (
+                      <button
+                        className="icon-button danger"
+                        title={t('common.delete')}
+                        aria-label={`${t('common.delete')}: ${amendmentTitle(a)}`}
+                        disabled={busy.has(a.id) || !!p || (isInProgress(a) && !canRetry(a))}
+                        onClick={() => setToDelete(a)}
+                      >
+                        <TrashIcon />
+                      </button>
+                    )}
                   </div>
                 </div>
 

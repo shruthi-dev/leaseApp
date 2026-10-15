@@ -71,6 +71,25 @@ Deno.serve(async (req) => {
   } catch {
     // handled below
   }
+  // Only the owner may analyze. People the portfolio is shared with can read the rows (RLS), so
+  // without this check they could start a Claude run that only fails when saving.
+  const target =
+    typeof body.amendment_id === 'string' && body.amendment_id
+      ? { table: 'lease_amendments', id: body.amendment_id }
+      : typeof body.lease_id === 'string' && body.lease_id
+        ? { table: 'leases', id: body.lease_id }
+        : null
+  if (target) {
+    const { data: owned, error: ownError } = await supabase
+      .from(target.table)
+      .select('id')
+      .eq('id', target.id)
+      .eq('user_id', userData.user.id)
+      .maybeSingle()
+    if (ownError) return json({ error: ownError.message, code: 'load_failed' }, 500)
+    if (!owned) return json({ error: 'Not found', code: 'not_owner' }, 404)
+  }
+
   if (typeof body.amendment_id === 'string' && body.amendment_id) return analyzeAmendment(supabase, body.amendment_id)
   if (typeof body.lease_id === 'string' && body.lease_id) {
     // parts: fetch only these (e.g. clauses an older lease lacks) and leave everything else untouched.

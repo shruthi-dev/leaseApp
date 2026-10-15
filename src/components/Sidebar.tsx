@@ -1,6 +1,6 @@
 import type { ComponentType, SVGProps } from 'react'
 import { NavLink } from 'react-router-dom'
-import { ChartIcon, ChevronsLeftIcon, DashboardIcon, FileIcon } from './Icons'
+import { ChartIcon, ChevronsLeftIcon, DashboardIcon, FileIcon, SettingsIcon } from './Icons'
 import { t, type MessageKey } from '../i18n'
 
 // Main menu. Add new sections here and in routes.tsx.
@@ -8,6 +8,7 @@ const NAV_ITEMS: { to: string; label: MessageKey; icon: ComponentType<SVGProps<S
   { to: '/leases', label: 'nav.leases', icon: FileIcon },
   { to: '/dashboard', label: 'nav.dashboard', icon: DashboardIcon },
   { to: '/reports', label: 'nav.reports', icon: ChartIcon },
+  { to: '/settings', label: 'nav.settings', icon: SettingsIcon },
 ]
 
 interface Props {
